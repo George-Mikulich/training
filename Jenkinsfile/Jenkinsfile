@@ -28,7 +28,7 @@ pipeline {
             steps {
                 script{
                         docker.withRegistry('https://quay.io','4b2b06c7-5ea6-4ef4-b1fc-6ff48c45c9c3') {
-                    app.push("1.0")
+                    app.push("${env.GIT_COMMIT}")
                     }
                 }
             }
