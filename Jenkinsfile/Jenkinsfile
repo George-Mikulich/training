@@ -27,7 +27,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 script{
-                        docker.withRegistry('https://quay.io/george-mikulich') {
+                        docker.withRegistry('https://quay.io','george-mikulich') {
                     app.push("1.0")
                     }
                 }
