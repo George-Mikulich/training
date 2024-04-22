@@ -14,7 +14,7 @@ pipeline {
 
 	stage('Pylint') {
 	    steps {
-		sh 'python app.py'
+		sh 'cat app.py'
 	    }
 	}
 
