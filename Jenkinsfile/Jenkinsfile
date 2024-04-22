@@ -21,8 +21,6 @@ pipeline {
         }
         stage('Test'){
             steps {
-		withPythonEnv('python') {
-                    sh 'pip install --quiet pylint'
 		    sh 'pylint app.py | tee pylint.out'
                 }
 	     }
