@@ -21,7 +21,8 @@ pipeline {
         }
         stage('Test'){
             steps {
-                 echo 'Empty'
+                 sh 'pip install --quiet pylint'
+		 sh 'pylint app.py  | tee pylint.out'
             }
         }
         stage('Deploy') {
