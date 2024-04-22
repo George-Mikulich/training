@@ -21,9 +21,9 @@ pipeline {
         }
         stage('Test'){
             steps {
-		    sh 'pylint app.py | tee pylint.out'
-                }
-	     }
+		 sh 'pylint app.py | tee pylint.out'
+            }
+
         }
         stage('Deploy') {
             steps {
