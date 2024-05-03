@@ -1,0 +1,119 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: ci-cd-for-flask-app
+spec:
+  entrypoint: pipeline
+  arguments:
+    parameters:
+    - name: imageTag
+      value: latest
+  volumes:
+  - name: quay-credentials
+    secret:
+      secretName: quay-creds
+  - name: github-auth
+    secret:
+      secretName: github-auth
+
+  templates:
+  - name: pipeline
+    steps:
+    - - name: git-clone
+        template: git-clone
+    - - name: build-docker
+        template: build-docker
+        arguments:
+          artifacts:
+          - name: git-repo
+            from: "{{steps.git-clone.outputs.artifacts.git-repo}}"
+    - - name: git-push
+        template: git-push
+        arguments:
+          artifacts:
+          - name: git-repo
+            from: "{{steps.git-clone.outputs.artifacts.git-repo}}"
+
+  - name: git-clone
+    inputs:
+      artifacts:
+      - name: argo-source
+        path: /src
+        git:
+          repo: https://github.com/george-mikulich/training
+          revision: "feature/add-argo-workflow"
+    container:
+      image: alpine:3.17
+      command: [sh, -c]
+      workingDir: /src
+      args: ["ls"]
+    outputs:
+      artifacts:
+      - name: git-repo
+        path: /src
+  - name: build-docker
+    inputs:
+      artifacts:
+      - name: git-repo
+        path: /src
+    container:
+      image: moby/buildkit:v0.13.1-rootless
+      workingDir: /src
+      command:
+      - sh
+      - -c
+      - |
+        export DOCKER_CONFIG=/docker
+
+        buildctl-daemonless.sh build \
+        --frontend \
+        dockerfile.v0 \
+        --local \
+        context=. \
+        --local \
+        dockerfile=. \
+        --output \
+        type=image,name=quay.io/george-mikulich/flask-app:"{{workflow.parameters.imageTag}}",push=true
+      env:
+      - name: BUILDKITD_FLAGS
+        value: --oci-worker-no-process-sandbox
+      volumeMounts:
+      - name: quay-credentials # mount file containing secret at /docker
+        mountPath: "/docker"
+      securityContext:
+        seccompProfile:
+          type: Unconfined
+        runAsUser: 1000
+        runAsGroup: 1000
+
+  - name: git-push
+    inputs:
+      artifacts:
+      - name: git-repo
+        path: /src
+    container:
+      image: alpine/git:2.40.1
+      command:
+      - sh
+      - -c
+      - |
+        git clone https://github.com/George-Mikulich/helm-chart.git
+        cp -R app helm-chart
+        cd helm-chart
+        git config --global user.email "g.mikulich@softteco.com"
+        git config --global user.name "$USER"
+        git add .
+        git commit -m 'new push from workflow'
+        git push https://$USER:$TOKEN@github.com/George-Mikulich/helm-chart.git
+      env:
+      - name: USER
+        valueFrom:
+          secretKeyRef:
+            name: github-auth
+            key: username
+      - name: TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: github-auth
+            key: password
+      workingDir: /src
