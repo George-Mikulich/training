@@ -10,6 +10,8 @@ image:
 
 containerPort: 5000
 
+appLabel: "flask-app"
+
 service:
   type: ClusterIP
   port: 5000
