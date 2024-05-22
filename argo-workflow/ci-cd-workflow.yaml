@@ -33,6 +33,8 @@ spec:
           artifacts:
           - name: git-repo
             from: "{{steps.git-clone.outputs.artifacts.git-repo}}"
+    - - name: create-3-envs
+        template: submit-template
 
   - name: git-clone
     inputs:
@@ -117,3 +119,13 @@ spec:
             name: github-auth
             key: password
       workingDir: /src
+
+  - name: submit-template
+    script:
+      image: curlimages/curl:8.7.1
+      command:
+      - sh
+      source: |
+        curl https://argo-server:2746/api/v1/workflows/argo/submit \
+          --insecure \
+          -d '{"resourceKind": "WorkflowTemplate", "resourceName": "cd-with-3-envs", "submitOptions": {"labels": "workflows.argoproj.io/workflow-template=cd-with-3-envs"}}'

@@ -1,0 +1,130 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: cd-with-3-envs
+spec:
+  entrypoint: cd
+  templates:
+  - name: cd
+    steps:
+    - - name: deploy-dev
+        template: dev
+    - - name: deploy-stage
+        template: stage
+    - - name: approve-to-prod
+        template: delay
+    - - name: deploy-prod
+        template: prod
+
+  - name: dev
+    inputs:
+      artifacts:
+      - name: helm-chart
+        path: /src
+        git:
+          repo: https://github.com/george-mikulich/helm-chart
+          revision: "main"
+    container:
+      image: alpine/git:2.40.1
+      workingDir: /src
+      command:
+      - sh
+      - -c
+      - |
+        git checkout dev
+        sed 's/app"/app-dev"/' app/values.yaml > tmp
+        rm app/values.yaml
+        mv tmp app/values.yaml
+        echo $(date +%D-%T) | cat > timetag
+        git config --global user.email "g.mikulich@softteco.com"
+        git config --global user.name "$USER"
+        git add .
+        git commit -m 'new push from workflow'
+        git push https://$USER:$TOKEN@github.com/George-Mikulich/helm-chart.git dev
+      env:
+      - name: USER
+        valueFrom:
+          secretKeyRef:
+            name: github-auth
+            key: username
+      - name: TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: github-auth
+            key: password
+
+  - name: stage
+    inputs:
+      artifacts:
+      - name: helm-chart
+        path: /src
+        git:
+          repo: https://github.com/george-mikulich/helm-chart
+          revision: "main"
+    container:
+      image: alpine/git:2.40.1
+      workingDir: /src
+      command:
+      - sh
+      - -c
+      - |
+        git checkout stage
+        sed 's/app"/app-stage"/' app/values.yaml > tmp
+        rm app/values.yaml
+        mv tmp app/values.yaml
+        echo $(date +%D-%T) | cat > timetag
+        git config --global user.email "g.mikulich@softteco.com"
+        git config --global user.name "$USER"
+        git add .
+        git commit -m 'new push from workflow'
+        git push https://$USER:$TOKEN@github.com/George-Mikulich/helm-chart.git stage
+      env:
+      - name: USER
+        valueFrom:
+          secretKeyRef:
+            name: github-auth
+            key: username
+      - name: TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: github-auth
+            key: password
+  - name: delay
+    suspend: {}
+
+  - name: prod
+    inputs:
+      artifacts:
+      - name: helm-chart
+        path: /src
+        git:
+          repo: https://github.com/george-mikulich/helm-chart
+          revision: "main"
+    container:
+      image: alpine/git:2.40.1
+      workingDir: /src
+      command:
+      - sh
+      - -c
+      - |
+        git checkout prod
+        sed 's/app"/app-prod"/' app/values.yaml > tmp
+        rm app/values.yaml
+        mv tmp app/values.yaml
+        echo $(date +%D-%T) | cat > timetag
+        git config --global user.email "g.mikulich@softteco.com"
+        git config --global user.name "$USER"
+        git add .
+        git commit -m 'new push from workflow'
+        git push https://$USER:$TOKEN@github.com/George-Mikulich/helm-chart.git prod
+      env:
+      - name: USER
+        valueFrom:
+          secretKeyRef:
+            name: github-auth
+            key: username
+      - name: TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: github-auth
+            key: password
